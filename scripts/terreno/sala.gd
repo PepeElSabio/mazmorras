@@ -17,16 +17,14 @@ var contenedor_techo         : Node3D
 
 
 @export var forma: Rect2i
-@export var nPuertas: int = 0
 var tiles: PackedVector2Array
 var puertas: PackedVector2Array
 var paredes: PackedVector2Array
 
 
-func _init(_forma: Rect2i = Rect2i(), _nPuertas: int = 0) -> void:
+func _init(_forma: Rect2i ) -> void:
 	if _forma != Rect2i():
 		forma = _forma
-		nPuertas = _nPuertas
 		tiles = PackedVector2Array()
 		puertas = PackedVector2Array()
 		paredes = PackedVector2Array()
@@ -47,19 +45,7 @@ func _ready():
 
 				if x == 0 or x == forma.size.x - 1 or y == 0 or y == forma.size.y - 1:
 					paredes.append(tile)
-		@warning_ignore("integer_division")
-		var centros_puertas = [
-			forma.position + Vector2i(forma.size.x / 2, 0),
-			forma.position + Vector2i(forma.size.x / 2, forma.size.y - 1),
-			forma.position + Vector2i(forma.size.x - 1, forma.size.y / 2),
-			forma.position + Vector2i(0, forma.size.y / 2),
-		]
-
-		for i in min(nPuertas, centros_puertas.size()):
-			puertas.append(centros_puertas[i])
-
 	_crear_arbol()
-	dibujar()
 
 
 
@@ -84,76 +70,23 @@ func _crear_nodo(nombre: String, padre: Node3D = self) -> Node3D:
 func _exit_tree() -> void:
 	pass
 
+func add_puertas(puerta : Vector2i):
+	puertas.append(puerta)
 
 func dibujar() -> void:
-	var pos_suelo := Vector3i(forma.position.x, 0, forma.position.y)
-	var tam_suelo := Vector3i(forma.size.x, 0, forma.size.y)
-	bloque.add(bloque.SUELO, pos_suelo, tam_suelo, contenedor_suelo)
-
-
 	var px := forma.position.x
 	var py := forma.position.y
 	var sx := forma.size.x
 	var sy := forma.size.y
 
-	# Norte (y = py) y Sur (y = py + sy - 1): bloques horizontales
-	var segmentos_h := _segmentos_con_puertas(
-		PackedVector2Array([
-			Vector2(px, py),
-			Vector2(px, py + sy - 1),
-		]),
-		sx, true
-	)
-	for seg in segmentos_h:
-		var ini : int  = seg[0]
-		var lon : int  = seg[1]
-		var fila: int  = seg[2]
-		var con : Node3D = contenedor_paredes_norte if fila == py else contenedor_paredes_sur
-		bloque.add(bloque.PARED, Vector3i(ini, 0, fila), Vector3i(lon, altura_pared, 1), con)
+	bloque.add(bloque.SUELO, Vector3i(px, 0, py), Vector3i(sx, 0, sy), contenedor_suelo)
+	_pared_h(px,        py,        sx, contenedor_paredes_norte)
+	_pared_h(px,        py + sy-1, sx, contenedor_paredes_sur)
+	_pared_v(px,        py,        sy, contenedor_paredes_oeste)
+	_pared_v(px + sx-1, py,        sy, contenedor_paredes_este)
 
-	# Oeste (x = px) y Este (x = px + sx - 1): bloques verticales
-	var segmentos_v := _segmentos_con_puertas(
-		PackedVector2Array([
-			Vector2(px,        py),
-			Vector2(px + sx - 1, py),
-		]),
-		sy, false
-	)
-	for seg in segmentos_v:
-		var ini : int  = seg[0]
-		var lon : int  = seg[1]
-		var col : int  = seg[2]
-		var con : Node3D = contenedor_paredes_oeste if col == px else contenedor_paredes_este
-		bloque.add(bloque.PARED, Vector3i(col, 0, ini), Vector3i(1, altura_pared, lon), con)
+func _pared_h(px: int, fila: int, longitud: int, con: Node3D) -> void:
+	bloque.add(bloque.PARED, Vector3i(px, 0, fila), Vector3i(longitud, altura_pared, 1), con)
 
-
-# Devuelve Array de [inicio, longitud, coordenada_fija]
-# axis_fixed: true = recorre X (paredes N/S), false = recorre Z (paredes O/E)
-func _segmentos_con_puertas(filas: PackedVector2Array, longitud: int, axis_fixed: bool) -> Array:
-	var resultado := []
-	for fila in filas:
-		var coord_fija : int = int(fila.y) if axis_fixed else int(fila.x)
-		var coord_ini  : int = int(fila.x) if axis_fixed else int(fila.y)
-
-		# Recoger posiciones de puertas en esta fila/columna
-		var huecos := PackedInt32Array()
-		for puerta in puertas:
-			if axis_fixed and int(puerta.y) == coord_fija:
-				huecos.append(int(puerta.x))
-			elif not axis_fixed and int(puerta.x) == coord_fija:
-				huecos.append(int(puerta.y))
-		huecos.sort()
-
-		# Partir la pared en segmentos continuos saltando los huecos
-		var cursor := coord_ini
-		var fin    := coord_ini + longitud
-		for hueco in huecos:
-			if hueco > cursor:
-				resultado.append([cursor, hueco - cursor, coord_fija])
-			# Dintel sobre la puerta
-			resultado.append([hueco, 1, coord_fija])  # <-- ver nota abajo
-			cursor = hueco + 1
-		if cursor < fin:
-			resultado.append([cursor, fin - cursor, coord_fija])
-
-	return resultado
+func _pared_v(col: int, py: int, longitud: int, con: Node3D) -> void:
+	bloque.add(bloque.PARED, Vector3i(col, 0, py), Vector3i(1, altura_pared, longitud), con)
