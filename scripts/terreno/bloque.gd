@@ -10,7 +10,8 @@ static func add(mesh: BoxMesh, tile_pos: Vector3i, tile_size: Vector3i, contened
 	var box = mesh.duplicate() as BoxMesh
 	box.size = Vector3(tile_size)
 	mesh_instance.mesh = box
-	mesh_instance.position = Vector3(tile_pos) + Vector3(tile_size) / 2.0 - Vector3.ONE
+	mesh_instance.position = Vector3(tile_pos) + Vector3(tile_size) / 2.0 - Vector3.ONE*(0.5)
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	mesh_instance.gi_mode = GeometryInstance3D.GI_MODE_STATIC
 	contenedor.add_child(mesh_instance)
+	print(mesh_instance.position)
