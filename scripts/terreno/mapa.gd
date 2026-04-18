@@ -34,14 +34,18 @@ func _ready() -> void:
 
 func generar_y_dibujar() -> void:
 	limpiar()
-	generarSalas()
-	generarPasillos()
-	# Ya no necesitamos asignarPuertas manualmente, el Pasillo lo hará en su _ready
+	generar()
+	construir()
 	mapa_listo.emit()
 
 # ── Generación de salas ────────────────────────────────────
+func construir() -> void:
+	for sala in salas:
+		sala.construir()
+	for pasillo in pasillos:
+		pasillo.construir()
 
-func generarSalas() -> void:
+func generar() -> void:
 	_rng.seed = semilla if semilla != 0 else int(Time.get_ticks_msec())
 	# Crear sala inicial
 	var forma_inicial := Rect2i(0, 0, 10, 10)
@@ -70,6 +74,7 @@ func _expandir(padre: Sala, dir_entrada: String, profundidad: int) -> void:
 
 		# Guardamos la conexión para crear el pasillo después
 		_conexiones.append([padre, hijo])
+		generarPasillo(padre, hijo)
 
 		_expandir(hijo, datos_dir["opuesta"], profundidad + 1)
 
@@ -104,11 +109,8 @@ func _centrar(origen: int, largo_padre: int, largo_hijo: int) -> int:
 
 # ── Generación de pasillos ──────────────────────
 
-func generarPasillos() -> void:
-	for con in _conexiones:
-		# Instanciamos el pasillo con las dos salas
-		# La lógica interna del Pasillo se encargará de calcular su forma y perforar las salas
-		var p := Pasillo.new(con[0], con[1], grosor_pasillo)
+func generarPasillo(sala1, sala2) -> void:
+		var p := Pasillo.new(sala1, sala2, grosor_pasillo)
 		nodo_pasillos.add_child(p)
 		pasillos.append(p)
 
